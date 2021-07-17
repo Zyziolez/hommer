@@ -2,7 +2,7 @@ import React, {useState, useEffect} from 'react'
 import HomeMenu from './HomeMenu'
 import axios from 'axios'
 import { Redirect, Link } from 'react-router-dom'
-import { createHome, isLogged } from './other/routes';
+import { createHome, isLogged, joinHome as joinhome } from './other/routes';
 
 export default function WelcomeHome() {
     const [jointInpt, setJoinInpt] = useState('')
@@ -37,6 +37,18 @@ export default function WelcomeHome() {
         }
     }
 
+    const joinHome = () => {
+        if( jointInpt.trim().length === 6 ){
+            axios.patch(`/${joinhome}`, {code: jointInpt})
+            .then(res => {
+                if( res.data ){
+                    setRed(true)
+                }
+            } )
+            .catch( err =>  console.log(err) )
+        }
+    }
+
     return (
         <div>
             <HomeMenu/>
@@ -50,6 +62,7 @@ export default function WelcomeHome() {
                 <div className='join-create' >
                     <input id='join' type='text' value={ jointInpt } onChange={e => setJoinInpt(e.target.value) } placeholder='enter code...' />
                     <label htmlFor='join' > join home </label>
+                    <button onClick={joinHome} > join </button>
                     <p> or </p>
                     <button onClick={ e => setSeeCreate( !seeCreate ) } > create home </button>
                     {seeCreate ?
@@ -61,7 +74,7 @@ export default function WelcomeHome() {
                 </div>
             </section>
             <Link to='/remind-code' className='cant-remember-btn' > I can't remember my code! </Link>
-            {red ? <Redirect to='/dashboard' /> :null }
+            {red ? <Redirect to='/home' /> :null }
         </div>
     )
 }

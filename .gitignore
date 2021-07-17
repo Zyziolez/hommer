@@ -1,5 +1,6 @@
 /back/node_modules
 /back/.env
+/back/socketServer.js
 /bacl/package-lock.json
 /node_modules
 /front/node_modules

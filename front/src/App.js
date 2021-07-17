@@ -10,6 +10,7 @@ const ShoppingList = lazy(() => import('./components/ShoppingList'))
 const Tasks = lazy(() => import('./components/Tasks'))
 const Callendar = lazy(() => import('./components/Callendar'))
 const RemindCode = lazy(() => import('./components/RemindCode'))
+const ChangePass = lazy(() => import('./components/ChangePass'))
 
 function App() {
   let location = useLocation();
@@ -22,12 +23,13 @@ function App() {
           <Route exact path='/' children={ <Main/> } />
           <Route path='/login' children={ <Login/> } />
           <Route path='/register' children={ <Register/> } />
-          <Route path='/dashboard' children={ <Dashboard/> } />
+          <Route path='/home' children={ <Dashboard/> } />
           <Route path='/welcome' children={ <WelcomeHome/> } />
-          <Route path='/tasks' children={ <Tasks/> } />
-          <Route path='/callendar' children={ <Callendar/> } />
-          <Route path='/shopping-list' children={ <ShoppingList/> } />
+          <Route path='/home/tasks' children={ <Tasks/> } />
+          <Route path='/home/callendar' children={ <Callendar/> } />
+          <Route path='/home/shopping-list' children={ <ShoppingList/> } />
           <Route path='/remind-code' children={ <RemindCode/> } />
+          <Route path='/home/change-password' children={ <ChangePass/> } />
         </Switch>
       </Suspense>
     </div>

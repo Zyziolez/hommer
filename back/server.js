@@ -1,5 +1,5 @@
 const path = require('path')
-const { createHome, dashboardMix, isLogged, logout } = require('../front/src/components/other/routes')
+const { createHome, dashboardMix, isLogged, logout, joinHome } = require('../front/src/components/other/routes')
 require('dotenv').config({path: path.join(__dirname, '.env')})
 const cors = require('cors')
 const express = require('express')
@@ -8,7 +8,9 @@ const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
 const nodemailer = require("nodemailer")
 const cookies = require('cookie-parser')
+const http = require('http')
 const { register, login } = require('../front/src/components/other/routes')
+const socket = require('socket.io')
 //vars
 const app = express()
 const port = 3058
@@ -55,6 +57,28 @@ async function mail ( name, recipient, link  ) {
 
 connection.connect()
 
+const server = http.createServer( app).listen(port)
+
+const io = socket(server)
+
+io.on( 'connection', soc => {
+    soc.on( 'change-checkbox', (info) => {
+        if( info.category === 'callendar' ){
+            connection.query( 'UPDATE callendar_tasks SET done = ? WHERE id = ?', [info.value, info.id], (err, result, fields) => {
+                if(err){
+                    console.log(err)
+                }
+            } )
+        }else if( info.category === 'list' ) {
+            connection.query( 'UPDATE shopping_products SET done = ? WHERE id = ?', [info.value, info.id], (err, result, fields) => {
+                if(err){
+                    console.log(err)
+                }
+            } )
+        }
+    } )
+} )
+
 //app.use stuff
 app.use( cors() )
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -95,7 +119,7 @@ app.post( `/${register}`, (req, res) => {
 } )
 app.get( `/${isLogged}`, (req, res) => {
     const cookie = req.cookies['token'];
-    
+
     jwt.verify( cookie, process.env.JWT_STR, (err, user) => {
         if(err){
             res.send(false)
@@ -145,9 +169,10 @@ app.post(`/${createHome}`, (req, res) => {
     } )
 })
 app.get(`/${logout}`, (req, res) => {
+    console.log('help')
     res.clearCookie('token')
     res.clearCookie('home')
-    res.sendStatus(202)
+    // res.sendStatus(202)
 })
 app.get(`/${dashboardMix}`, (req, res) => {
     const cookie = req.cookies['token'];
@@ -155,33 +180,74 @@ app.get(`/${dashboardMix}`, (req, res) => {
     jwt.verify( cookie, process.env.JWT_STR, (err, user) => {
         if(err){
             res.send(false)
+        }else{
+            const queryPromise = new Promise((resolve, reject) => {
+                connection.query( 'SELECT shopping_products.product,shopping_products.id, shopping_products.done, shopping_categories.name as category  FROM shopping_products, shopping_categories, shopping_list WHERE shopping_categories.list_id = shopping_list.id AND shopping_products.list_id = shopping_list.id AND shopping_list.home_id = ?', [ req.cookies['home'] ], (err, result, fields ) => {
+                    if(err){
+                        console.log(err)
+                        reject(':(')
+                    }
+                    resolve(result)
+                } )
+            }).then(resp => {
+                connection.query('SELECT title, id, text, done, termin FROM callendar_tasks WHERE home_id = ? AND termin = CURDATE()', [req.cookies['home']], (erro, result, fields) => {
+                    if( erro ){
+                        console.log(erro)
+                    }else{
+                        res.send( { list:resp, callendar:result } )
+                    }
+                } )
+            })
+            .catch( err => {
+                console.log(err)
+                res.sendStatus(500)
+            } )
         }
 
-        const queryPromise = new Promise((resolve, reject) => {
-            connection.query( 'SELECT shopping_products.product, shopping_products.added, shopping_categories.name as category  FROM shopping_products, shopping_categories, shopping_list WHERE shopping_categories.list_id = shopping_list.id AND shopping_products.list_id = shopping_list.id AND shopping_list.home_id = ?', [ req.cookies['home'] ], (err, result, fields ) => {
-                if(err){
-                    console.log(err)
-                    reject(':(')
-                }
-                resolve(result)
-            } )
-        }).then(resp => {
-            connection.query('SELECT title, text, done, termin FROM callendar_tasks WHERE home_id = ? AND termin = CURDATE()', [req.cookies['home']], (erro, result, fields) => {
-                if( erro ){
-                    console.log(erro)
-                }else{
-                    res.send( { list:resp, callendar:result } )
-                }
-            } )
-        })
-        .catch( err => {
-            console.log(err)
-            res.sendStatus(500)
-        } )
+       
     } )
 })
+app.patch(`/${joinHome}`, (req, res) => {
+    const cookie = req.cookies['token'];
 
-app.listen( port, () => {
-    console.log( `listening ( ${port} )` )
-} )
+    jwt.verify( cookie, process.env.JWT_STR, (err, user) => {
+        if(err){
+            res.send(false)
+        }else{
+            new Promise((resolve, reject) => {
+                connection.query('SELECT * from homes WHERE id = ?', [ req.body.code ], (err, result, fields) => {
+                    if(err){
+                        console.log(err)
+                        res.send(false)
+                        reject(':(')
+                    }else{
+                        if( result.length > 0 ){
+                            resolve( result[0] )
+                        }else{
+                            res.send(false)
+                            reject(':(')
+                        }
+                    }
+                })
+            })
+            .then( resp => {
+                connection.query( 'UPDATE users set home_id = ? WHERE id = ?', [req.body.code, user], (erro, result, fields) => {
+                    if(erro){
+                        console.log(erro)
+                        res.send(false)
+                    }
+                    res.cookie('home', req.body.code, {httpOnly: true, credentials: true})
+                    res.send( true )
+                } )
+            } )
+            .catch( error => console.log(error) )
+            
+        }
+    })
+   
+})
+
+// app.listen( port, () => {
+//     console.log( `listening ( ${port} )` )
+// } )
 

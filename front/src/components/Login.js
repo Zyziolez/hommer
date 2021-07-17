@@ -2,6 +2,7 @@ import React, {  useState, useEffect } from 'react'
 import axios from 'axios'
 import MenuEnter from './MenuEnter'
 import { Redirect } from 'react-router-dom'
+import {login as logIn} from './other/routes'
 
 export default function Login() {
     const [login, setLogin] = useState( '' )
@@ -10,7 +11,7 @@ export default function Login() {
 
     const loginHandler = () => {
         if( login.trim().length > 0 && pass.trim().length > 0 ){
-            axios.post( `/${login}`, { login: login, pass: pass } )
+            axios.post( `/${logIn}`, { login: login, pass: pass } )
             .then( res => res.data ? setRed(true) : alert( 'zle' ) )
             .catch( err => console.log(err) )
         }
